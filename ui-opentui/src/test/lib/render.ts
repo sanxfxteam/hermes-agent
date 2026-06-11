@@ -26,6 +26,7 @@ import type { JSX } from '@opentui/solid'
 import { createMemo } from 'solid-js'
 
 import { installFfiCoordSafety } from '../../boundary/ffiSafe.ts'
+import { installMultiClickSelection } from '../../boundary/multiClickSelect.ts'
 
 // Headless renders go through the same node:ffi seam as the live TUI — install
 // the negative-coordinate shim here too (the live path installs it in
@@ -55,6 +56,11 @@ export interface RenderProbe {
   readonly resize: (width: number, height: number) => void
   /** Left-click at screen cell (x, y) via the mock mouse, then settle a pass. */
   readonly click: (x: number, y: number) => Promise<void>
+  /** The raw mock mouse (pressDown / moveTo / release / doubleClick / …) for
+   *  multi-click + drag scenarios — pair with `settle()`. */
+  readonly mouse: TestRendererSetup['mockMouse']
+  /** The live selection's copyable text ('' when there is none). */
+  readonly selectedText: () => string
   /** Mouse-wheel at screen cell (x, y) via the mock mouse, then settle a pass. */
   readonly scroll: (x: number, y: number, direction: 'up' | 'down') => Promise<void>
   /** The mock keyboard (typeText / pressArrow / pressEnter / …) — pair with `settle()`. */
@@ -78,6 +84,9 @@ export async function renderProbe(
     // never flushes it), so keyboard-driven tests can press Escape.
     kittyKeyboard: options?.kittyKeyboard ?? false
   })
+  // Same multi-click selection seam as the live renderer (boundary/renderer.ts
+  // installs it after createCliRenderer) so mouse tests exercise the shim.
+  installMultiClickSelection(setup.renderer)
   // renderOnce → flush → renderOnce: flush awaits async work (scrollbox measure,
   // Tree-sitter markdown tokenization) that a single sync pass would miss. The
   // native `<markdown internalBlockMode="top-level">` commits blocks over several
@@ -97,6 +106,14 @@ export async function renderProbe(
       await setup.mockMouse.click(x, y)
       await setup.renderOnce()
       await setup.flush()
+    },
+    mouse: setup.mockMouse,
+    selectedText: () => {
+      try {
+        return setup.renderer.getSelection()?.getSelectedText() ?? ''
+      } catch {
+        return ''
+      }
     },
     scroll: async (x, y, direction) => {
       await setup.mockMouse.scroll(x, y, direction)

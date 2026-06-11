@@ -15,6 +15,7 @@ import { Deferred, Effect } from 'effect'
 import { RendererError } from './errors.ts'
 import { installFfiCoordSafety } from './ffiSafe.ts'
 import { getLog } from './log.ts'
+import { installMultiClickSelection } from './multiClickSelect.ts'
 import { installSyntaxStyleDegrade } from './nativeHandles.ts'
 
 // Node-FFI seam: clamp negative draw coordinates BEFORE the u32 FFI marshaling
@@ -93,6 +94,9 @@ export const acquireRenderer = Effect.fn('Renderer.acquire')(function* (options:
           useMouse: options.mouse
         })
         guardRendererErrorHandlers(created, preexisting)
+        // Editor-grade mouse selection: double-click word, triple-click line,
+        // drag extends with the clicked span held (see multiClickSelect.ts).
+        installMultiClickSelection(created)
         return created
       },
       catch: cause => new RendererError({ cause })

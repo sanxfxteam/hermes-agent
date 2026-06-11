@@ -15,6 +15,7 @@
 import { createCliRenderer } from '@opentui/core'
 import { render } from '@opentui/solid'
 
+import { installMultiClickSelection } from '../src/boundary/multiClickSelect.ts'
 import { createSessionStore } from '../src/logic/store.ts'
 import { App } from '../src/view/App.tsx'
 import { ThemeProvider } from '../src/view/theme.tsx'
@@ -37,6 +38,9 @@ const renderer = await createCliRenderer({
   useKittyKeyboard: {},
   useMouse: true
 })
+// Same seam the live entry installs (boundary/renderer.ts) so the demo smokes
+// double-click word / triple-click line / drag-extend too.
+installMultiClickSelection(renderer)
 
 void render(
   () => (
